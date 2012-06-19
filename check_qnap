@@ -1,0 +1,300 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'snmp'
+require 'optparse'
+include SNMP
+
+@host = nil
+@command = nil
+@walk = false
+
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: ./#{File.basename(__FILE__)} --hostname|-H HOSTNAME [--command|-c COMMAND] | -w|--walk] | --help|-h)"
+
+  # This displays the help screen
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+    exit
+  end
+
+  opts.on( '-w', '--walk', "Walks the SNMP in the specified host" ) do |opt|
+    @walk = true
+  end
+
+  opts.on( '-H', '--host HOST', 'The address (IP, hostname or path) of the database' ) do |opt|
+    @host = opt
+  end
+
+  opts.on( '-c', '--command COMMAND', 'The check to perform' ) do |opt|
+    @command = opt
+  end
+end
+
+optparse.parse!
+
+COMMANDS = {
+  disk1_temp: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.3.1',
+    label: 'Disk1 Temp'
+    },
+  disk2_temp: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.3.2',
+    label: 'Disk2 Temp'
+    },
+  disk3_temp: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.3.3',
+    label: 'Disk3 Temp'
+  },
+  disk4_temp: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.3.4',
+    label: 'Disk4 Temp'
+  },
+  disk1_name: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.5.1',
+    label: 'Disk1 Name'
+  },
+  disk2_name: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.5.2',
+    label: 'Disk2 Name'
+  },
+  disk3_name: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.5.3',
+    label: 'Disk3 Name'
+  },
+  disk4_name: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.5.4',
+    label: 'Disk4 Name'
+  },
+  disk1_size: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.6.1',
+    label: 'Disk1 Size'
+  },
+  disk2_size: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.6.2',
+    label: 'Disk2 Size'
+  },
+  disk3_size: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.6.3',
+    label: 'Disk3 Size'
+  },
+  disk4_size: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.6.4',
+    label: 'Disk4 Size'
+  },
+  disk1_smart: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.7.1',
+    label: 'Disk1 Smart'
+  },
+  disk2_smart: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.7.2',
+    label: 'Disk2 Smart'
+  },
+  disk3_smart: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.7.3',
+    label: 'Disk3 Smart'
+  },
+  disk4_smart: {
+    oid: 'SNMPv2-SMI::enterprises.24681.1.2.11.1.7.4',
+    label: 'Disk4 Smart'
+  }
+}
+
+class QnapSnmpCheck
+  def initialize(host, command)
+    @host = host
+    @command = command.to_sym
+  end
+
+  def check_response(response)
+    begin
+      case @command.to_s.split('_')[-1].to_sym
+      when :smart
+        return check_smart(response)
+      when :temp
+        return check_temp(response)
+      else
+        return 3
+      end
+    rescue
+      return 3
+    end
+  end
+
+  def check_global_smart
+    oks = 0
+    warnings = 0
+    criticals = 0
+    unknown = 0
+    responses = []
+    (1..4).each do |id|
+      command_id = "disk#{id}_smart".to_sym
+      ret = self.snmp_call(COMMANDS[command_id][:oid])
+      responses << ret
+      case self.check_smart(ret)
+      when 0
+        oks += 1
+      when 1
+        warnings += 1
+      when 2
+        criticals += 1
+      when 3
+        unknown += 1
+      end
+    end
+
+    if criticals > 0
+      puts "#{@command} Critical: #{responses.join(' - ')}"
+      exit 2
+    elsif warnings > 0
+      puts "#{@command} Warning: #{responses.join(' - ')}"
+      exit 1
+    elsif unknown > 0
+      puts "#{@command} Unknown: #{responses.join(' - ')}"
+      exit 3
+    elsif oks == 4
+      puts "#{@command} OK: #{responses.join(' - ')}"
+      exit 0
+    else
+      puts "#{@command} Unknown: #{responses.join(' - ')}"
+      exit 3
+    end
+  end
+  def check_global_temp
+    oks = 0
+    warnings = 0
+    criticals = 0
+    unknown = 0
+    responses = []
+    (1..4).each do |id|
+      command_id = "disk#{id}_temp".to_sym
+      ret = self.snmp_call(COMMANDS[command_id][:oid])
+      responses << ret
+      case self.check_temp(ret)
+      when 0
+        oks += 1
+      when 1
+        warnings += 1
+      when 2
+        criticals += 1
+      when 3
+        unknown += 1
+      end
+    end
+
+    if criticals > 0
+      puts "#{@command} Critical: #{responses.join(' - ')}"
+      exit 2
+    elsif warnings > 0
+      puts "#{@command} Warning: #{responses.join(' - ')}"
+      exit 1
+    elsif unknown > 0
+      puts "#{@command} Unknown: #{responses.join(' - ')}"
+      exit 3
+    elsif oks == 4
+      puts "#{@command} OK: #{responses.join(' - ')}"
+      exit 0
+    else
+      puts "#{@command} Unknown: #{responses.join(' - ')}"
+      exit 3
+    end
+  end
+
+  def check_temp(response)
+    begin
+      case response.to_s.split('/').first.split(' ').first.to_f
+      when 0..45
+        return 0
+      when 45..60
+        return 1
+      else
+        return 2
+      end
+    rescue
+      return 3
+    end
+  end
+
+  def check_smart(response)
+    case response
+    when 'GOOD'
+      return 0
+    else
+      return 3
+    end
+  end
+
+  def snmp_call(oid)
+    begin
+      Manager.open(:host => @host) do |manager|
+        response = manager.get(oid)
+        return response.varbind_list[0].value.to_s
+      end
+    rescue
+      return false
+    end
+  end
+
+  def check!
+    if COMMANDS.include?(@command)
+      Manager.open(:host => @host) do |manager|
+        response = manager.get(COMMANDS[@command][:oid])
+        response_value = response.varbind_list[0].value.to_s
+        case check_response(response_value)
+        when 0
+          puts "#{COMMANDS[@command][:label]} OK: #{response_value}"
+          exit 0
+        when 1
+          puts "#{COMMANDS[@command][:label]} Warning: #{response_value}"
+          exit 1
+        when 2
+          puts "#{COMMANDS[@command][:label]} Critical: #{response_value}"
+          exit 2
+        else
+          puts "#{COMMANDS[@command][:label]} Unknown: #{response_value}"
+          exit 3
+        end
+      end
+    elsif @command.to_s.include?('global')
+      check = @command.to_s.split('_')[-1].to_sym
+      case check
+      when :temp
+        check_global_temp()
+      when :smart
+        check_global_smart()
+      else
+        puts "The command is incorrect"
+        exit 1
+      end
+    else
+      puts "The command is incorrect"
+      exit 1
+    end
+  end
+end
+
+if @host
+  if @walk
+    Manager.open(:host => @host) do |manager|
+      ifTable = ObjectId.new("1.3.6.1.4.1.24681.1.2.11")
+      next_oid = ifTable
+      while next_oid.subtree_of?(ifTable)
+        response = manager.get_next(next_oid)
+        varbind = response.varbind_list.first
+        next_oid = varbind.name
+        puts "OID => '#{varbind.oid.to_s.strip}'"
+        puts "Value => '#{varbind.value.to_s.strip}'"
+        puts
+      end
+    end
+  elsif @command
+    qnap = QnapSnmpCheck.new(@host, @command)
+    qnap.check!
+  else
+    puts optparse.banner
+    exit -1
+  end
+else
+  puts optparse.banner
+  exit -1
+end

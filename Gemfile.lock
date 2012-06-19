@@ -1,0 +1,18 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    coderay (1.0.6)
+    method_source (0.7.1)
+    pry (0.9.9.6)
+      coderay (~> 1.0.5)
+      method_source (~> 0.7.1)
+      slop (>= 2.4.4, < 3)
+    slop (2.4.4)
+    snmp (1.1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  pry
+  snmp
