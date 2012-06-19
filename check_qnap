@@ -166,6 +166,9 @@ class QnapSnmpCheck
     criticals = 0
     unknown = 0
     responses = []
+    temperatures = 0
+    perfdata = "'temp'="
+
     (1..4).each do |id|
       command_id = "disk#{id}_temp".to_sym
       ret = self.snmp_call(COMMANDS[command_id][:oid])
@@ -181,6 +184,8 @@ class QnapSnmpCheck
         unknown += 1
       end
     end
+    responses.each { |temp| temperatures += temp.to_f }
+    perfdata += "#{temperatures.to_f/4.0};45.0;60.0;20.0;80.0"
 
     if criticals > 0
       puts "#{@command} Critical: #{responses.join(' - ')}"
@@ -192,7 +197,7 @@ class QnapSnmpCheck
       puts "#{@command} Unknown: #{responses.join(' - ')}"
       exit 3
     elsif oks == 4
-      puts "#{@command} OK: #{responses.join(' - ')}"
+      puts "#{@command} OK: #{responses.join(' - ')}|#{perfdata}"
       exit 0
     else
       puts "#{@command} Unknown: #{responses.join(' - ')}"
