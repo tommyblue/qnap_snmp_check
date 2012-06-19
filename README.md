@@ -1,6 +1,6 @@
 # QnapSnmpCheck
 
-A collection of Nagios/Icinga plugins to monitor QNAP devices via SNMP
+A Nagios/Icinga plugin to monitor QNAP devices via SNMP
 
 ## Requirements
 
