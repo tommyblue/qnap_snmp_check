@@ -27,19 +27,19 @@ Copy **check_qnap** plugin into the Nagios/Icinga plugins folder (e.g. _/usr/lib
 
 Add desired service checks to a QNAP host:
 
-  define service{
-        use                             generic-service
-        host_name                       qnap_host
-        service_description             Disks
-        check_command                   check_qnap!check_global_smart
-  }
+    define service{
+          use                             generic-service
+          host_name                       qnap_host
+          service_description             Disks
+          check_command                   check_qnap!check_global_smart
+    }
 
-  define service{
-        use                             generic-service
-        host_name                       qnap_host
-        service_description             Temperatures
-        check_command                   check_qnap!check_global_temp
-  }
+    define service{
+          use                             generic-service
+          host_name                       qnap_host
+          service_description             Temperatures
+          check_command                   check_qnap!check_global_temp
+    }
 
 **check_global_temp** returns performance data too.
 You can perform also single checks, the complete list is in the code, check the **COMMANDS** hash.
